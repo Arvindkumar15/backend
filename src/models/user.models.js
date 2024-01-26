@@ -49,15 +49,15 @@ const userSchema = new Schema({
 
 userSchema.pre("save", async function (next){
     if(!this.isModified("pasword")) return next(); //if password is not midified 
-    this.password = bcrypt.hash(this.password, 10); // Encrypt the password
+    this.password =await bcrypt.hash(this.password, 10); // Encrypt the password
     next();
 })
 
-userSchema.methods.isPasswordCorrect(async function(password){//it is a custom method
-    return bcrypt.compare(password, this.password); //compare the stored password and entered password, at the time of logged in
-})
+userSchema.methods.isPasswordCorrect = async function(password){//it is a custom method
+    return await bcrypt.compare(password, this.password); //compare the stored password and entered password, at the time of logged in
+}
 
-userSchema.methods.generateAccessToken(function(){ //Generate Access Token
+userSchema.methods.generateAccessToken = function(){ //Generate Access Token
     return jwt.sign({
         _id:this._id,
         email:this.email,
@@ -68,9 +68,9 @@ userSchema.methods.generateAccessToken(function(){ //Generate Access Token
     {
         expiresIn:process.env.ACCESS_TOKEN_EXPIRY
     })
-})
+}
 
-userSchema.methods.generateRefreshToken(function(){
+userSchema.methods.generateRefreshToken = function(){
     jwt.sign(
         {
             _id:this._id,
@@ -80,6 +80,6 @@ userSchema.methods.generateRefreshToken(function(){
             expiresIn:process.env.REFRESH_TOKEN_EXPIRY
         }
     )
-})
+}
 
 export const User = mongoose.model("User", userSchema);
