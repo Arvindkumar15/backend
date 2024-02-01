@@ -48,16 +48,18 @@ const userSchema = new Schema({
 }, {timestamps:true});
 
 userSchema.pre("save", async function (next){
-    if(!this.isModified("pasword")) return next(); //if password is not midified 
+    if(!this.isModified("password")) return next(); //if password is not midified 
     this.password =await bcrypt.hash(this.password, 10); // Encrypt the password
     next();
 })
 
+
 userSchema.methods.isPasswordCorrect = async function(password){//it is a custom method
-    return await bcrypt.compare(password, this.password); //compare the stored password and entered password, at the time of logged in
+    return await bcrypt.compare(password, this.password);//compare the stored password and entered password, at the time of logged in
 }
 
-userSchema.methods.generateAccessToken = function(){ //Generate Access Token
+
+ userSchema.methods.generateAccessToken = function(){ //Generate Access Token
     return jwt.sign({
         _id:this._id,
         email:this.email,
@@ -71,7 +73,7 @@ userSchema.methods.generateAccessToken = function(){ //Generate Access Token
 }
 
 userSchema.methods.generateRefreshToken = function(){
-    jwt.sign(
+    return jwt.sign(
         {
             _id:this._id,
         },
