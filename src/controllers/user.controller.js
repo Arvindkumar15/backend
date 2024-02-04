@@ -4,7 +4,7 @@ import { User } from "../models/user.models.js"
 import { uploadOnCloudinary } from "../utils/cloudinary.js"
 import { ApiResponse } from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken"
-// import {isPasswordCorrect} from '../models/user.models.js'
+
 
 const registerUser = asyncHandler(async (req, res) => {
   //1. Get user details from frontend
@@ -239,13 +239,13 @@ const changeCurrentPassword = asyncHandler(async (req, res)=>{
 const getCurrentUser = asyncHandler(async (req, res)=>{
   return res
   .status(200)
-  .json(200, req.user, "fetched user successfully");
+  .json(new ApiResponse(200, req.user, "fetched user successfully"));
 })
 
 const updateAccountDetails = asyncHandler (async(req, res)=>{
   const {fullName, email} = req.body;
 
-  const user = User.findByIdAndUpdate(
+  const user =await User.findByIdAndUpdate(
     req.user?._id,
     {
       $set:{
@@ -268,7 +268,7 @@ const updateUserAvatar = asyncHandler(async(req, res)=>{
     throw new ApiError(400, "Avatar file is missing");
   }
 
-  const avatar = uploadOnCloudinary(avatarLocalPath);
+  const avatar = await uploadOnCloudinary(avatarLocalPath);
 
   if(!avatar){
     throw new ApiError(400, "Error while uploading avatar");
@@ -295,7 +295,7 @@ const updateUserCoverImage = asyncHandler(async(req, res)=>{
     throw new ApiError(400, "CoverImage file is missing");
   }
 
-  const coverImage = uploadOnCloudinary(coverImageLocalPath);
+  const coverImage =await uploadOnCloudinary(coverImageLocalPath);
 
   if(!coverImage){
     throw new ApiError(400, "Error while uploading CoverImage");
