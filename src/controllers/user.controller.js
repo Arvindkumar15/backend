@@ -148,7 +148,9 @@ const logOutUser = asyncHandler(async (req, res)=>{
   await User.findByIdAndUpdate(
     req.user._id,
     {
-      $set:{refreshToken:undefined}
+      $unset:{
+        refreshToken:1//this removes the field from the document
+      }
     },
     {
       new:true
@@ -167,23 +169,23 @@ const logOutUser = asyncHandler(async (req, res)=>{
 })
 
 const refreshAccessToken = asyncHandler(async(req, res)=>{
-  const incomingRefreshToken = req.cookie.refreshToken || req.body?.refreshToken;
+  const incomingRefreshToken = req.cookies.refreshToken || req.body?.refreshToken;
 
   if(!incomingRefreshToken){
     throw new ApiError(401, "Unauthorized request")
   }
 
   try {
-    const decodedToken = jwt.verify(incomingRefreshToken, process.env.REFRESH_ACCESS_TOKEN);
+    const decodedToken = jwt.verify(incomingRefreshToken, process.env.REFRESH_TOKEN_SECRET);
 
     const user = await User.findById(decodedToken?._id);
 
     if(!user){
-      throw new ApiError(401, "Invalid Refresh Token")
+      throw new ApiError(400, "Invalid Refresh Token")
     }
 
     if(incomingRefreshToken!==user?.refreshToken){
-      throw new ApiError(400, "Refresh Token is expired or used")
+      throw new ApiError(401, "Refresh Token is expired or used")
     }
 
     const {accessToken, newRefreshToken} = generateAccesssAndRefreshTokens(user._id);
@@ -205,10 +207,8 @@ const refreshAccessToken = asyncHandler(async(req, res)=>{
       )
     )
     
-
-
   } catch (error) {
-    ApiError(400, error?.message || "Invalid refresh token");
+    throw new ApiError(400, error?.message || "Invalid refresh token");
   }
 })
 
@@ -230,7 +230,7 @@ const changeCurrentPassword = asyncHandler(async (req, res)=>{
 
   user.password = newPassword;
 
-  user.save({validateBefore:false});
+  await user.save({validateBefore:false});
 
   return res
   .status(200)
@@ -388,34 +388,49 @@ const getUserChannelProfile = asyncHandler(async(req, res)=>{
 
 })
 
-const getWatchHistory = asyncHandler(async(req, rse)=>{
-  const user = User.aggregate([
+const getWatchHistory = asyncHandler(async(req, res)=>{
+  const user = await User.aggregate([
     {
-      $match:{ _id:mongoose.Types.ObjectId(req.user._id) }
+      $match:{
+         _id:new mongoose.Types.ObjectId(req.user._id) 
+      }
     },
     {
       $lookup:{
-        from:"videos", localField:"watchHistory", foreignField:"_id", as:"watchHistory",
-        pipeline:
-        [
-          {$lookup
-            :{
-              from:"users",localField:"owner", foreignField:"_id", as:"owner",
-              pipeline:
-              [
-                 { $project:{ fullName:1, username:1, avatar:1 } } 
+        from:"videos", 
+        localField:"watchHistory", 
+        foreignField:"_id", 
+        as:"watchHistory",
+        pipeline: [
+          {
+            $lookup:{
+              from:"users",
+              localField:"owner", 
+              foreignField:"_id", 
+              as:"owner",
+              pipeline: [
+                 { 
+                  $project:{ 
+                    fullName:1, 
+                    username:1, 
+                    avatar:1 }
+                  } 
               ]
             }
+          },
+          {
+            $addFields:{  owner:{  $first: "$owner"  }  }
           }
         ]
       }
     }
   ])
+  console.log("Watch History: ",user[0].watchHistory)
 
   return res
   .status(200)
   .json(
-    new ApiResponse(200, user[0].watchHistory, "history fetched successfully")
+    new ApiResponse(200, user[0].watchHistory, "watch history fetched successfully")
   )
 })
 
